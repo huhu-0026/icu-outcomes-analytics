@@ -8,6 +8,11 @@
 
 ## 先体验
 
+**[在线交互演示 →](https://huhu-0026.github.io/icu-outcomes-analytics/)**
+
+打开网址即可浏览六页、筛选模拟人群、切换四个预测时点和导出汇总。线上仅使用独立模拟数据；所有指标均非真实研究结果。GitHub Pages 托管静态网页，筛选在浏览器执行，无需运行 Python 后端。
+
+
 - 双击 `web/index.html`：立即浏览**纯模拟**离线快照，支持六页导航与四时点切换；离线时人口筛选关闭。
 - 双击 `启动演示.cmd`：打开完整本地交互演示，可筛选性别、年龄段和 ICU 科室。
 - 命令行：`python app.py serve --mode demo --open`。带数据库的公开包仅启动看板时使用 Python 标准库，不必安装重建环境。
@@ -76,3 +81,9 @@ python app.py serve --mode demo --open
 真实分析为单中心回顾性方法复现，临床特征覆盖不等于原文完整重现；不把内部验证称作外部验证，不作治疗因果判断。患者日期经独立偏移，不做真实跨患者月度运营趋势。诊断和处方仅供回顾性描述，不进入早期预测。原 PBIX 未自动改写，新 Power BI 报表需在 Desktop 中按已交付材料导入与核对。
 
 软件见 LICENSE；来源见 NOTICE.md。受限数据的使用与分享遵循 [PhysioNet 的数据协议及衍生资源说明](https://physionet.org/content/mimiciv/3.1/)。
+
+## 在线部署
+
+`.github/workflows/pages.yml` 在 main 更新后自动检查并发布。构建命令为 `python scripts/build_pages.py`；仅打包 8 个明确列出的静态资源，不上传真实库或 Python 服务。构建器核验已公开的模拟库 SHA256、数据来源与固定模拟规模。公开演示必须保留 SYNTHETIC 标记。
+
+真实 MIMIC 分析继续在授权本地环境中运行。访问与衍生数据分享遵循 [PhysioNet 协议](https://physionet.org/content/mimiciv/3.1/)，不能因为原数据脱敏就再次公开个体记录；面向论文的汇总结果应另行检查披露风险与协议要求。

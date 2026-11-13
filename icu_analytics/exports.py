@@ -22,7 +22,7 @@ def export_bi(mode):
 
 def public_bundle():
     """Positive source allowlist. No private research path, database or image is traversed."""
-    source_files=['README.md','LICENSE','NOTICE.md','requirements.txt','.gitignore','.github/workflows/ci.yml','app.py','启动演示.cmd','启动真实分析.cmd','tests/test_analytics.py','tests/test_http.py','sql/schema.sql','sql/analysis_queries.sql','sql/postgres_load.py','powerbi/README.md','powerbi/FolderQuery.pq','powerbi/Measures.dax','powerbi/theme.json']
+    source_files=['README.md','LICENSE','NOTICE.md','requirements.txt','.gitignore','.github/workflows/ci.yml','.github/workflows/pages.yml','scripts/build_pages.py','tests/test_pages.py','tests/client_parity.cjs','app.py','启动演示.cmd','启动真实分析.cmd','tests/test_analytics.py','tests/test_http.py','sql/schema.sql','sql/analysis_queries.sql','sql/postgres_load.py','powerbi/README.md','powerbi/FolderQuery.pq','powerbi/Measures.dax','powerbi/theme.json']
     for folder in ('icu_analytics','web','docs/public'):
         source_files.extend(str(p.relative_to(ROOT)).replace('\\','/') for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     source_files=sorted(set(source_files))
@@ -39,6 +39,7 @@ def public_bundle():
     files['data/demo/mart.sqlite']=(ROOT/'data/demo/mart.sqlite').read_bytes()
     manifest={k:hashlib.sha256(v).hexdigest() for k,v in files.items()}
     files['PUBLIC_MANIFEST.json']=json.dumps({'classification':'synthetic-only records and snapshots; no real MIMIC records, predictions, weights or result tables; documentation may describe project-scale counts','files':manifest},indent=2).encode()
+    (ROOT/'PUBLIC_MANIFEST.json').write_bytes(files['PUBLIC_MANIFEST.json'])
     path=ROOT/'dist/icu-outcomes-analytics-portfolio.zip';path.parent.mkdir(exist_ok=True)
     with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for name,content in files.items(): z.writestr('icu-outcomes-analytics/'+name,content)
