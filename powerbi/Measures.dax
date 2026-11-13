@@ -1,0 +1,36 @@
+// Copy measures ONE AT A TIME into fact_icu_stay (Home > New measure).
+// Use the active one-way relationships documented in README.md.
+Patients = DISTINCTCOUNT(fact_icu_stay[patient_id])
+Admissions = DISTINCTCOUNT(fact_icu_stay[admission_id])
+ICU Stays = COUNTROWS(fact_icu_stay)
+Mortality 90d = AVERAGE(fact_icu_stay[outcome])
+Mean ICU LOS Days = AVERAGE(fact_icu_stay[los_days])
+// First-eligible age remains constant for each patient, and is averaged once.
+Mean Patient Age =
+    AVERAGEX(VALUES(fact_icu_stay[patient_id]),
+        VAR PatientKey = fact_icu_stay[patient_id]
+        RETURN LOOKUPVALUE(dim_patient[age],dim_patient[patient_id],PatientKey))
+// Fact ICU unit filters do not propagate backward through one-way relationships.
+// TREATAS explicitly transfers eligible admission IDs without ambiguous bidirectional joins.
+Diagnosis Codes =
+    CALCULATE(COUNTROWS(fact_diagnosis),
+        TREATAS(VALUES(fact_icu_stay[admission_id]),fact_diagnosis[admission_id]))
+Prescription Records =
+    CALCULATE(SUM(fact_prescription[orders]),
+        TREATAS(VALUES(fact_icu_stay[admission_id]),fact_prescription[admission_id]))
+Prescription Admissions =
+    CALCULATE(DISTINCTCOUNT(fact_prescription[admission_id]),
+        TREATAS(VALUES(fact_icu_stay[admission_id]),fact_prescription[admission_id]))
+Eligible Prediction Stays = DISTINCTCOUNT(fact_prediction[stay_id])
+// Create disconnected Landmark = DATATABLE("hour",INTEGER,{{1},{24},{48},{72}}).
+// Relate Landmark[hour] 1:* to fact_prediction[hour]. Keep model_metric disconnected from patients.
+Frozen AUROC =
+    IF(HASONEVALUE(model_metric[model]) && HASONEVALUE(model_metric[experiment]) && HASONEVALUE(Landmark[hour]),
+        CALCULATE(MAX(model_metric[auroc]),
+            TREATAS(VALUES(Landmark[hour]),model_metric[hour])),BLANK())
+Frozen Brier =
+    IF(HASONEVALUE(model_metric[model]) && HASONEVALUE(model_metric[experiment]) && HASONEVALUE(Landmark[hour]),
+        CALCULATE(MAX(model_metric[brier]),
+            TREATAS(VALUES(Landmark[hour]),model_metric[hour])),BLANK())
+// Use experiment and model in matrix rows or explicit single-value slicers.
+// Do NOT show MAX across multiple models as a single "overall" score.

@@ -1,0 +1,7 @@
+# Runtime is standard-library only when using the bundled synthetic database.
+# Rebuilding the local MIMIC mart / synthetic fixtures:
+numpy>=1.24,<3
+pandas>=2.2,<3
+pyarrow>=14
+scikit-learn>=1.5,<2
+# Optional PostgreSQL target only: SQLAlchemy>=2 and psycopg[binary]>=3

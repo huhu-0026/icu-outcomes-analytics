@@ -1,0 +1,11 @@
+data/private/
+data/demo/powerbi/
+validation/
+dist/
+__pycache__/
+*.pyc
+.env
+*.building.sqlite
+upstream/
+docs/local/
+*.pbix
