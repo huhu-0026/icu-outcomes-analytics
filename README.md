@@ -24,12 +24,15 @@ flowchart LR
 ```
 
 ```mermaid
+%%{init: {"htmlLabels": false, "flowchart": {"htmlLabels": false}}}%%
 flowchart TD
-  RAW["授权 MIMIC-IV / 冻结研究产物"] --> ETL["Python ETL + SQL 数据集"]
-  ETL --> LOCAL["SQLite + 本地看板与 BI 导出"]
-  RAW --> REVIEW["只读 Development 审查"]
+  accTitle: 本地研究与公开演示的数据流
+  accDescr: 授权 MIMIC-IV 和冻结研究产物经数据处理与只读审查后用于本地看板与 BI 导出。独立模拟库经白名单检查和静态构建后发布到 GitHub Pages。
+  RAW["授权 MIMIC-IV<br/>与冻结研究产物"] --> ETL["Python ETL<br/>与 SQL 数据集"]
+  ETL --> LOCAL["SQLite 与本地看板<br/>及 BI 导出"]
+  RAW --> REVIEW["Development<br/>只读审查"]
   REVIEW --> LOCAL
-  DEMO["独立模拟库"] --> BUILD["资产白名单 + 静态编译"] --> SITE["GitHub Pages"]
+  DEMO["独立模拟库"] --> BUILD["资产白名单<br/>与静态构建"] --> SITE["GitHub Pages"]
 ```
 
 研究设计的对象、模型对比、结局、时点和验证范围见 [PICOTS 和研究时间轴](docs/public/research_design.md)。公开仓库展示研究设计、实现与模拟界面。真实 Table 1、系数、曲线和解释在授权本地环境读取。
