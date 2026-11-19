@@ -4,4 +4,7 @@ numpy>=1.24,<3
 pandas>=2.2,<3
 pyarrow>=14
 scikit-learn>=1.5,<2
+# Local exploratory association and scientific figures only:
+statsmodels>=0.14,<1
+matplotlib>=3.8,<4
 # Optional PostgreSQL target only: SQLAlchemy>=2 and psycopg[binary]>=3

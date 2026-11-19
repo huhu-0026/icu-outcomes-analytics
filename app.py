@@ -19,8 +19,15 @@ def cached_dashboard(database,mtime,query):
 
 class Handler(BaseHTTPRequestHandler):
     database = None
+    research = None
     def do_GET(self):
         parsed=urlsplit(self.path)
+        if parsed.path == '/api/research':
+            if self.research is None:
+                self.send_error(404)
+            else:
+                self.send_content(self.research, 'application/json; charset=utf-8')
+            return
         if parsed.path in ('/api/health','/api/dashboard'):
             try:
                 if parsed.path=='/api/health':
@@ -34,7 +41,7 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 self.send_content(b'{"error":"Database unavailable. Rebuild the selected mode."}','application/json',500)
             return
-        names={'/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/preview-data.js':'preview-data.js','/favicon.svg':'favicon.svg'}
+        names={'/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/research-ui.js':'research-ui.js','/preview-data.js':'preview-data.js','/favicon.svg':'favicon.svg'}
         if parsed.path not in names:
             self.send_error(404);return
         p=ROOT/'web'/names[parsed.path]
@@ -54,6 +61,11 @@ def main():
         s=sub.add_parser(mode)
         if mode=='build-mimic': s.add_argument('--project',type=Path,default=ROOT.parent)
     s=sub.add_parser('serve');s.add_argument('--mode',choices=['demo','mimic'],default='demo');s.add_argument('--port',type=int);s.add_argument('--open',action='store_true')
+    s.add_argument('--database',type=Path,help='Read an existing mart.sqlite')
+    s.add_argument('--research-dir',type=Path,help='Local output from review-research')
+    s=sub.add_parser('review-research')
+    s.add_argument('--project',required=True,type=Path)
+    s.add_argument('--output',required=True,type=Path)
     sub.add_parser('export-public')
     s=sub.add_parser('export-bi');s.add_argument('--mode',choices=['demo','mimic'],default='demo')
     args=p.parse_args()
@@ -67,9 +79,26 @@ def main():
     elif args.command=='export-bi':
         from icu_analytics.exports import export_bi
         export_bi(args.mode)
+    elif args.command=='review-research':
+        from icu_analytics.research import write_review
+        print(write_review(args.project,args.output))
     else:
-        database=ROOT/('data/demo' if args.mode=='demo' else 'data/private')/'mart.sqlite'
+        database=args.database or ROOT/('data/demo' if args.mode=='demo' else 'data/private')/'mart.sqlite'
         if not database.is_file(): p.error('先运行 build-'+('demo' if args.mode=='demo' else 'mimic'))
+        with closing(connect(database)) as db:
+            source=metadata(db)
+            if source['mode']!=args.mode: p.error('数据库和启动模式不匹配')
+            if args.mode=='demo':
+                from icu_analytics.statistics import synthetic_research
+                research=synthetic_research(db)
+            else:
+                research=None
+            if args.research_dir is not None:
+                if args.mode!='mimic': p.error('研究结果仅能加载到本地真实模式')
+                research=json.loads((args.research_dir/'research_summary.json').read_text(encoding='utf-8'))
+                if research.get('mode')!='mimic' or research.get('cohort_sha256')!=source.get('cohort_sha256'):
+                    p.error('分析产物与当前数据库的队列指纹不一致')
+        Handler.research=json.dumps(research,ensure_ascii=False,allow_nan=False).encode('utf-8') if research else None
         Handler.database=database
         port=args.port or (8765 if args.mode=='demo' else 8766)
         try: server=ThreadingHTTPServer(('127.0.0.1',port),Handler)

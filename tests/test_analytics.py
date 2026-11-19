@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import sys
 import tempfile
@@ -6,6 +7,8 @@ import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from icu_analytics.analytics import ROOT,connect,dashboard
+
+MIMIC_MART = Path(os.environ.get('ICU_TEST_MIMIC_MART', ROOT/'data/private/mart.sqlite'))
 
 class GrainTests(unittest.TestCase):
     @classmethod
@@ -46,10 +49,10 @@ class DataIntegrationTests(unittest.TestCase):
             d=dashboard(db);self.assertEqual(d['meta']['mode'],'demo')
             self.assertEqual((d['summary']['patients'],d['summary']['admissions'],d['summary']['stays']),(1800,2300,2600))
             self.assertEqual(d['meta']['sources'],[])
-    @unittest.skipUnless((ROOT/'data/private/mart.sqlite').exists(),'Credentialed local database not included in public showcase')
+    @unittest.skipUnless(MIMIC_MART.is_file(),'Credentialed local database not included in public showcase')
     def test_real_counts_and_same_experiment_probabilities(self):
         from sklearn.metrics import roc_auc_score,average_precision_score
-        with connect(ROOT/'data/private/mart.sqlite') as db:
+        with connect(MIMIC_MART) as db:
             counts=db.execute('SELECT COUNT(DISTINCT patient_id),COUNT(DISTINCT admission_id),COUNT(*) FROM fact_icu_stay').fetchone()
             self.assertEqual(tuple(counts),(52234,68009,75260))
             n=db.execute('SELECT COUNT(*) FROM fact_prediction').fetchone()[0];self.assertEqual(n,196129)

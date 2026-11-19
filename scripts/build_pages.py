@@ -1,16 +1,17 @@
 """Build a static synthetic-only site using the standard library."""
-import hashlib
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-ASSETS=('index.html','style.css','app.js','favicon.svg','preview-data.js','client-analytics.js')
+sys.path.insert(0,str(ROOT))
+from icu_analytics.public_assets import demo_path, preview
+
+ASSETS=('index.html','style.css','app.js','research-ui.js','favicon.svg','preview-data.js','client-analytics.js')
 
 def synthetic_records():
-    source=ROOT/'data/demo/mart.sqlite'
-    manifest=json.loads((ROOT/'PUBLIC_MANIFEST.json').read_text(encoding='utf-8'))
-    assert hashlib.sha256(source.read_bytes()).hexdigest()==manifest['files']['data/demo/mart.sqlite'],'Unverified demo database'
+    source=demo_path()
     db=sqlite3.connect(source.as_uri()+'?mode=ro',uri=True);db.row_factory=sqlite3.Row
     try:
         meta={r['key']:json.loads(r['value']) for r in db.execute('SELECT * FROM metadata')}
@@ -32,7 +33,7 @@ def build(destination=None):
     destination.mkdir(exist_ok=True,parents=True)
     # Positive asset allowlist; never copy the repository or a database into the site.
     for name in ASSETS:
-        content=(ROOT/'web'/name).read_bytes()
+        content=preview() if name=='preview-data.js' else (ROOT/'web'/name).read_bytes()
         if name=='index.html':
             html=content.decode('utf-8')
             html=html.replace('<head>','<head><meta name="icu-runtime" content="static">',1)

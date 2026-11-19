@@ -1,3 +1,37 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ICU Outcomes Analytics · 医疗数据分析作品</title><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="style.css"><script src="preview-data.js" defer></script><script src="app.js" defer></script></head>
-<body><div class="shell"><aside class="sidebar"><a class="brand" href="#overview"><span class="brand-icon">i<span>+</span></span><span>ICU <b>INSIGHT</b><small>OUTCOMES ANALYTICS</small></span></a><div class="workspace">ANALYTICS WORKSPACE <span>01</span></div><nav aria-label="主导航"><button data-page="overview" class="active"><span>◫</span>分析总览<i>01</i></button><button data-page="cohort"><span>◎</span>队列与患者画像<i>02</i></button><button data-page="clinical"><span>≋</span>诊断与处方分析<i>03</i></button><button data-page="models"><span>⌁</span>预测与模型评价<i>04</i></button><button data-page="quality"><span>◇</span>数据质量与口径<i>05</i></button><button data-page="project"><span>↗</span>项目方法与成果<i>06</i></button></nav><div class="side-bottom"><div class="status-dot"></div>LOCAL ANALYTICS<small>Python · SQL · Clinical research</small><p>从研究数据，到可信洞察。</p></div></aside><div class="main"><header><div class="breadcrumb">PORTFOLIO <span>/</span> MEDICAL DATA ANALYTICS</div><div class="header-right"><span class="tiny-dot"></span><span id="mode-label">正在连接</span><button id="export" class="export">↓ 导出当前汇总</button></div></header><main><section class="page-head"><div><div class="eyebrow">A CLINICAL DATA ANALYTICS PROJECT</div><h1 id="page-title">ICU 分析总览</h1><p id="page-subtitle">理解队列结构、数据完整性与预测表现。</p></div><div class="page-stamp"><b>ICU</b><span>RESEARCH<br>WORKSPACE</span></div></section><div id="notice" class="notice">正在读取数据…</div><section class="filterbar" aria-label="分析筛选"><div class="filter"><label for="sex">患者性别</label><select id="sex"><option value="all">全部性别</option></select></div><div class="filter"><label for="age">首次符合条件时年龄</label><select id="age"><option value="all">全部年龄段</option></select></div><div class="filter wide"><label for="unit">首次入 ICU 科室</label><select id="unit"><option value="all">全部 ICU 科室</option></select></div><div class="landmark"><label>预测时点 · ICU 后小时</label><div role="group" aria-label="预测时点"><button data-hour="1">1h</button><button data-hour="24" class="active">24h</button><button data-hour="48">48h</button><button data-hour="72">72h</button></div></div><button id="reset" title="重置筛选">重置</button></section><div id="filter-scope" class="scope"></div><div id="content" aria-live="polite"><div class="loading">正在准备分析看板…</div></div><footer><span>ICU Outcomes Analytics · 数据分析作品</span><span id="footer-info">LOCAL FIRST / REPRODUCIBLE / RESEARCH ONLY</span></footer></main></div></div></body></html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>基于 MIMIC-IV 的临床数据研究与智能预测分析平台</title>
+<link rel="icon" href="favicon.svg"><link rel="stylesheet" href="style.css">
+<script src="preview-data.js" defer></script><script src="research-ui.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+<div class="shell"><aside class="sidebar">
+<a class="brand" href="#overview"><span class="brand-icon">+</span><span>临床数据研究<small>ICU RESEARCH</small></span></a>
+<nav aria-label="研究章节">
+<button data-page="overview" aria-label="研究总览"><span aria-hidden="true">◫</span>研究总览</button>
+<button data-page="cohort" aria-label="临床队列构建"><span aria-hidden="true">◎</span>临床队列构建</button>
+<button data-page="baseline" aria-label="患者基线特征"><span aria-hidden="true">▤</span>患者基线特征</button>
+<button data-page="clinical" aria-label="临床统计分析"><span aria-hidden="true">≋</span>临床统计分析</button>
+<button data-page="models" aria-label="动态预测模型"><span aria-hidden="true">⌁</span>动态预测模型</button>
+<button data-page="explanation" aria-label="模型解释性"><span aria-hidden="true">⊞</span>模型解释性</button>
+<button data-page="quality" aria-label="数据质量与复现"><span aria-hidden="true">◇</span>数据质量与复现</button>
+</nav>
+<div class="side-bottom"><a href="https://github.com/huhu-0026/icu-outcomes-analytics">项目源码与文档 ↗</a></div>
+</aside><div class="main">
+<header><div class="breadcrumb">Clinical Research and Intelligent Prediction Platform Based on MIMIC-IV</div>
+<div class="header-right"><span class="tiny-dot"></span><span id="mode-label">加载中</span><button id="export" class="export" disabled>↓ 导出当前汇总</button></div></header>
+<main><section class="page-head"><div><h1 id="page-title">研究总览</h1><p id="page-subtitle"></p></div></section>
+<div id="notice" class="notice" aria-live="polite"></div>
+<section class="filterbar" aria-label="分析筛选">
+<div class="filter"><label for="sex">性别</label><select id="sex"><option value="all">全部性别</option></select></div>
+<div class="filter"><label for="age">索引年龄</label><select id="age"><option value="all">全部年龄段</option></select></div>
+<div class="filter wide"><label for="unit">首次 ICU 科室</label><select id="unit"><option value="all">全部 ICU 科室</option></select></div>
+<div class="landmark"><label>预测时点 · 入科后小时</label><div role="group" aria-label="预测时点">
+<button data-hour="1">1h</button><button data-hour="24" class="active">24h</button><button data-hour="48">48h</button><button data-hour="72">72h</button></div></div>
+<button id="reset">重置</button></section>
+<div id="filter-scope" class="scope"></div><div id="content" aria-live="polite"><div class="loading">正在准备研究看板…</div></div>
+<footer><span>基于 MIMIC-IV 的临床数据研究与智能预测分析平台</span><span id="footer-info"></span></footer>
+</main></div></div></body></html>
