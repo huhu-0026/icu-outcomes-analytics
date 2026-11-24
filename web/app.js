@@ -80,7 +80,10 @@ async function load() {
             result=clientFiltering?window.ICUClient.dashboard(snapshot,window.ICU_CLIENT_DATA,filters):snapshot;
         } else {
             const response=await fetch('/api/dashboard?'+new URLSearchParams(filters));
-            if(!response.ok) throw Error('分析库读取失败');
+            if(!response.ok) {
+                const failure = await response.json().catch(() => ({}));
+                throw Error(failure.error || '分析库读取失败');
+            }
             result=await response.json();
         }
         researchLoad??=readResearch().catch(error=>{researchLoad=null;throw error;});

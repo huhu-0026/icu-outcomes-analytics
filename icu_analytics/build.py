@@ -1,15 +1,19 @@
 """Atomic, validated local mart builds; raw sources are opened read-only."""
-import hashlib
 import json
 import os
 import sqlite3
 import time
+from contextlib import closing
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
 
 from .analytics import ROOT
+from .research_inputs import (
+    COHORT, HOURS, RAW, TABLES, V04_CALIBRATED, V04_RAW, fingerprint_inputs, validate_oof,
+)
 
 def age_band(a):
     return np.select([pd.isna(a),a<40,a<55,a<65,a<75,a<85],['Unknown','18–39','40–54','55–64','65–74','75–84'],default='85+')
@@ -39,17 +43,27 @@ def finish(db,temp,destination,meta):
     check(db,'Foreign-key integrity',1,len(violations),'Every fact links to a valid dimension; no orphan records.')
     for k,v in meta.items(): db.execute('INSERT INTO metadata VALUES(?,?)',(k,json.dumps(v,ensure_ascii=False)))
     db.commit()
-    assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
+    if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+        raise ValueError('SQLite integrity check failed')
     db.close()
     os.replace(temp,destination)
     print(json.dumps({'database':str(destination),'status':'passed','mode':meta['mode']},ensure_ascii=False),flush=True)
 
 def build_mimic(project,destination):
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=destination.parent, prefix='mimic-build-') as staging:
+        db, temp = begin(Path(staging) / destination.name)
+        with closing(db):
+            _build_mimic(project, destination, db, temp)
+
+
+def _build_mimic(project, destination, db, temp):
     start=time.time();project=Path(project).resolve()
-    raw=project/'02_原始数据/mimic-iv-3.1'
-    cohortpath=project/'03_队列与特征工程/analysis/private/cohort.parquet'
-    tables=project/'07_最终报告与英文图表/03_tables'
-    db,temp=begin(destination)
+    raw=project/RAW
+    cohortpath=project/COHORT
+    tables=project/TABLES
+    research_inputs=fingerprint_inputs(project)
     sources=[]
     def read(relative,**kw):
         p=raw/relative;sources.append({'path':relative,'bytes':p.stat().st_size})
@@ -83,23 +97,26 @@ def build_mimic(project,destination):
         g=x.groupby(['hadm_id','drug']).size().reset_index(name='orders');orderrows+=len(x)
         db.executemany('INSERT INTO fact_prescription VALUES(?,?,?) ON CONFLICT(admission_id,drug) DO UPDATE SET orders=orders+excluded.orders',g.itertuples(index=False,name=None))
     check(db,'Prescription aggregation',orderrows,abs(orderrows-db.execute('SELECT COALESCE(SUM(orders),0) FROM fact_prescription').fetchone()[0]),'Counts raw prescription rows; this is not an administration or dose measure.')
-    pdir=project/'05_独立患者校准/analysis/private'
-    pred=np.load(pdir/'calibrated_oof.npz');unc=np.load(pdir/'nested_raw_oof.npz')
-    assert np.array_equal(pred['stay_id'],unc['stay_id']) and np.array_equal(pred['mask'],unc['mask'])
-    labelmap=c.set_index('stay_id').target
-    assert np.array_equal(labelmap.loc[pred['stay_id']].to_numpy(),pred['label'])
-    keyed=c.set_index('stay_id')
-    assert np.array_equal(keyed.loc[pred['stay_id'],'subject_id'].to_numpy(),pred['subject_id'])
-    assert np.array_equal(keyed.loc[pred['stay_id'],'fold'].to_numpy(),pred['fold'])
-    assert np.array_equal(pred['fold'],unc['fold']) and np.array_equal(pred['label'],unc['label'])
-    n=0
-    for j,h in enumerate(pred['hours']):
-        valid=pred['mask'][:,j].astype(bool)
-        pr=unc['predictions'][valid,j];pc=pred['predictions'][valid,j]
-        assert np.isfinite(pr).all() and np.isfinite(pc).all()
-        db.executemany('INSERT INTO fact_prediction VALUES(?,?,?,?)',[(int(i),int(h),float(a),float(b)) for i,a,b in zip(pred['stay_id'][valid],pr,pc)])
-        n+=int(valid.sum())
-    check(db,'Prediction coverage',n,abs(n-db.execute('SELECT COUNT(*) FROM fact_prediction').fetchone()[0]),'Only valid landmark observations; outcome is 90 days from ICU admission.')
+    keyed = c.set_index('stay_id')
+    with np.load(project / V04_CALIBRATED, allow_pickle=False) as pred, \
+         np.load(project / V04_RAW, allow_pickle=False) as unc:
+        mask = validate_oof(pred, keyed, 'v04 calibrated')
+        validate_oof(unc, keyed, 'v04 raw')
+        if not np.array_equal(pred['stay_id'], unc['stay_id']):
+            raise ValueError('v04 prediction row order differs between raw and calibrated files')
+        stays = pred['stay_id']
+        raw_scores, calibrated_scores = unc['predictions'], pred['predictions']
+        for j, hour in enumerate(HOURS):
+            valid = mask[:, j]
+            db.executemany('INSERT INTO fact_prediction VALUES(?,?,?,?)', (
+                (int(stay), hour, float(a), float(b))
+                for stay, a, b in zip(stays[valid], raw_scores[valid, j], calibrated_scores[valid, j])
+            ))
+    observed = dict(db.execute('SELECT hour, COUNT(*) FROM fact_prediction GROUP BY hour'))
+    expected = {hour: int(keyed.hours.ge(hour).sum()) for hour in HOURS}
+    check(db, 'Prediction coverage', sum(expected.values()),
+          sum(abs(count - observed.get(hour, 0)) for hour, count in expected.items()),
+          'OOF IDs, hours, and masks match the frozen cohort; inserted counts reconcile by hour.')
     for name,experiment in [('baseline_performance.csv','v03_baseline'),('calibrated_performance.csv','v04_nested')]:
         f=pd.read_csv(tables/name)
         if experiment=='v04_nested': f=f[f.model.isin(['nested_raw','isotonic'])]
@@ -114,7 +131,9 @@ def build_mimic(project,destination):
     check(db,'Upstream temporal audit (frozen)',verified['raw_record_truncation_prefix_checks'],int(not verified['all_passed']),'Recorded research audit: source/report times checked; not rerun by dashboard ETL.')
     orphan=db.execute('SELECT COUNT(*) FROM fact_icu_stay s JOIN fact_admission a USING(admission_id) WHERE s.patient_id<>a.patient_id').fetchone()[0]
     check(db,'Admission ownership',len(c),orphan,'ICU stay and hospital admission belong to the same patient.')
-    meta=dict(mode='mimic',title='ICU Outcomes Analytics',dataset='MIMIC-IV 3.1 · eligible replication cohort',scope='BIDMC, single centre; retrospective research only',built_utc=pd.Timestamp.now(tz='UTC').isoformat(),source_commit='83f89e845d80426141dec0fef755f3f684ca9c51',sources=sources,cohort_sha256=hashlib.sha256(cohortpath.read_bytes()).hexdigest(),duration_seconds=round(time.time()-start,2),model_scope='Frozen full-cohort OOF evaluation; cohort filters do not recompute model metrics or feature missingness.',date_policy='Patient-shifted dates are not used for cross-patient calendar trends.',count_policy='Patients and admissions are distinct counts. Mortality is ICU-stay-level, 90 days after ICU admission.',clinical_policy='Discharge diagnoses and prescription records are retrospective descriptive data, never added as model inputs.',restriction='Local credentialed use. Do not publish this database, exports, or real-data screenshots without an appropriate review.')
+    if fingerprint_inputs(project) != research_inputs:
+        raise ValueError('Shared research inputs changed during database build')
+    meta=dict(mode='mimic',title='ICU Outcomes Analytics',dataset='MIMIC-IV 3.1 · eligible replication cohort',scope='BIDMC, single centre; retrospective research only',built_utc=pd.Timestamp.now(tz='UTC').isoformat(),source_commit='83f89e845d80426141dec0fef755f3f684ca9c51',sources=sources,cohort_sha256=research_inputs[COHORT],research_input_sha256=research_inputs,duration_seconds=round(time.time()-start,2),model_scope='Frozen full-cohort OOF evaluation; cohort filters do not recompute model metrics or feature missingness.',date_policy='Patient-shifted dates are not used for cross-patient calendar trends.',count_policy='Patients and admissions are distinct counts. Mortality is ICU-stay-level, 90 days after ICU admission.',clinical_policy='Discharge diagnoses and prescription records are retrospective descriptive data, never added as model inputs.',restriction='Local credentialed use. Do not publish this database, exports, or real-data screenshots without an appropriate review.')
     finish(db,temp,destination,meta)
 
 def build_demo(destination):

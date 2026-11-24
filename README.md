@@ -2,26 +2,21 @@
 
 **Clinical Research and Intelligent Prediction Platform Based on MIMIC-IV**
 
-个人研究与工程实践。围绕 ICU 入科后 90 天死亡风险，把研究设计、临床数据治理、患者级分组、统计分析、动态预测及结果解释连成可追溯的研究流程。适用于临床研究和医疗数据分析岗位展示。临床应用尚未开展。
+这是我在学习临床研究和医学 AI 过程中完成的个人项目。我用 MIMIC-IV 3.1 练习把一个临床问题转成可核查的分析，并实现了数据整理、结果复算和交互展示。
 
-**English abstract.** A retrospective ICU research portfolio using credentialed MIMIC-IV 3.1 data. It documents cohort definitions, patient-level validation, descriptive and exploratory association analyses, and time-specific prediction evaluation. The interactive public demonstration uses independently generated synthetic data.
+研究问题是：在 ICU 入科后 1、24、48、72 小时，对当时仍符合条件的停留，使用当时已报告的信息，能否估计从入科日计的 90 天内有记录的死亡风险？v03 关注 Logistic 和 LSTM 的区分能力，主要比较时点为 24 小时。v04 延续早期概率误差的观察，重点比较首小时同一网络校准前后的 Brier。队列描述帮助理解分母，v06 的分组贡献用于理解模型输出。
 
-[在线演示（已发布版本）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [研究设计](docs/public/research_design.md) · [统计分析计划](docs/public/statistical_analysis_plan.md) · [项目验收](docs/acceptance_report.md)
+**English abstract.** A personal clinical research and engineering project on ICU landmark prediction using MIMIC-IV 3.1. This repository contains a synthetic interactive demo and tools for checking frozen results in a credentialed environment. Historical cohort construction, feature generation and model training are documented in a separate local project.
+
+[在线演示（模拟数据）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [项目概览](docs/public/project_overview.md) · [队列与时间轴](docs/public/research_design.md) · [实验流程](docs/public/model_development.md) · [统计分析计划](docs/public/statistical_analysis_plan.md)
 
 ![新版研究总览 · 独立模拟 SYNTHETIC](docs/public/dashboard-overview.png)
 
-| 能力 | 可验证成果 |
+| 证据范围 | 可查看或运行的内容 |
 |---|---|
-| 临床研究 | PICOTS、队列与结局定义、索引停留 Table 1、标准化差异、探索性调整 OR 和敏感性分析 |
-| 医学数据 | MIMIC 表关系、时间可得性、变量字典、分块 ETL、统计分母与完整性检查 |
-| 医学 AI | 冻结的 Logistic / LSTM / Isotonic 实验、患者五折 OOF、ROC / PR / Brier / MCC、分组历史贡献 |
-
-```mermaid
-flowchart LR
-  A["临床问题与设计"] --> B["数据提取与治理"] --> C["队列与风险集"]
-  C --> D["医学统计"] --> E["动态预测"] --> F["模型评价"]
-  F --> G["结果解释"] --> H["看板及研究报告"]
-```
+| 公开仓库 | 研究设计与数据口径、Python/SQL 分析实现、测试，以及可运行的七页独立模拟看板 |
+| 授权本地运行 | 导入冻结 Development 和相关源表，构建 SQLite 分析库。另可复算折外评价、生成 Table 1、探索性调整分析和图表 |
+| 历史研究项目 | 入排 SQL、时点特征生成、训练和校准代码、权重、折外预测及真实结果。公开文档记录其方法和边界 |
 
 ```mermaid
 %%{init: {"htmlLabels": false, "flowchart": {"htmlLabels": false}}}%%
@@ -29,13 +24,16 @@ flowchart TD
   accTitle: 本地研究与公开演示的数据流
   accDescr: 授权 MIMIC-IV 和冻结研究产物经数据处理与只读审查后用于本地看板与 BI 导出。独立模拟库经白名单检查和静态构建后发布到 GitHub Pages。
   RAW["授权 MIMIC-IV<br/>与冻结研究产物"] --> ETL["Python ETL<br/>与 SQL 数据集"]
-  ETL --> LOCAL["SQLite 与本地看板<br/>及 BI 导出"]
+  ETL --> MART["SQLite 分析库"]
   RAW --> REVIEW["Development<br/>只读审查"]
-  REVIEW --> LOCAL
+  MART --> MATCH["核对共同输入指纹"]
+  REVIEW --> MATCH
+  MATCH --> LOCAL["本地研究看板"]
+  MART --> BI["BI 分表导出"]
   DEMO["独立模拟库"] --> BUILD["资产白名单<br/>与静态构建"] --> SITE["GitHub Pages"]
 ```
 
-研究设计的对象、模型对比、结局、时点和验证范围见 [PICOTS 和研究时间轴](docs/public/research_design.md)。公开仓库展示研究设计、实现与模拟界面。真实 Table 1、系数、曲线和解释在授权本地环境读取。
+研究设计、队列分支与预测时间轴见 [PICOTS 和研究时间轴](docs/public/research_design.md)。公开页面的评分和贡献值来自模拟演示。真实研究产物在授权环境内查看。
 
 ![模型评价页 · 独立模拟 SYNTHETIC](docs/public/model-evaluation.png)
 
@@ -49,9 +47,9 @@ python scripts/build_pages.py
 python -m unittest discover -s tests -v
 ```
 
-打开 `dist/pages/index.html` 预览新版静态站。未部署的功能分支与在线已发布版本有版本差异。重建分析或测试 ETL 用 `python -m pip install -r requirements.txt`。安装 Node 后可执行浏览器汇总与 SQL 一致性测试。
+打开 `dist/pages/index.html` 预览当前检出的静态站。重建分析或测试 ETL 用 `python -m pip install -r requirements.txt`。安装 Node 后可执行浏览器汇总与 SQL 一致性测试。
 
-具有授权数据、冻结完整项目及本地分析库的研究人员可运行 `review-research` 生成一个新输出目录，再通过 `serve --mode mimic --database … --research-dir …` 加载。参数示例、版本和证据见 [模型开发与本地复现](docs/public/model_development.md)。
+具有授权数据和冻结研究项目的读者可运行 `build-mimic` 和 `review-research`，再通过 `serve --mode mimic --database … --research-dir …` 加载同一批输入生成的产物。参数示例和旧产物处理见 [模型开发与本地复算](docs/public/model_development.md)。
 
 | 位置 | 内容 |
 |---|---|
@@ -59,7 +57,7 @@ python -m unittest discover -s tests -v
 | `web/`、`scripts/build_pages.py` | 七页看板、公开静态构建 |
 | `powerbi/` | CSV 接入、Power Query、DAX |
 | `tests/`、`.github/workflows/` | 统计、数据、HTTP、Pages 与自动化验证 |
-| `docs/`、`docs/public/` | 审查、设计、SAP、指标、答辩与验收 |
+| `docs/`、`docs/public/` | 研究设计、统计计划、数据字典、实验记录与验收 |
 
 使用 Python、SQLite、SQL、JavaScript、Matplotlib，分析依赖含 NumPy、Pandas、scikit-learn 和 statsmodels。历史 LSTM 在本地冻结研究环境使用 PyTorch。
 

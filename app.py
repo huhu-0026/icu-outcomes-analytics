@@ -11,15 +11,19 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from icu_analytics.analytics import ROOT, connect, dashboard, metadata
+from icu_analytics.research_inputs import research_binding
 
 @lru_cache(maxsize=48)
-def cached_dashboard(database,mtime,query):
+def cached_dashboard(database,file_version,query,binding=None):
     with closing(connect(database)) as db:
+        if binding is not None and metadata(db).get('research_input_sha256') != dict(binding):
+            raise ValueError('分析库已更换为不同版本，请重新启动并加载匹配的研究汇总')
         return json.dumps(dashboard(db,dict(query)),ensure_ascii=False,allow_nan=False).encode('utf-8')
 
 class Handler(BaseHTTPRequestHandler):
     database = None
     research = None
+    binding = None
     def do_GET(self):
         parsed=urlsplit(self.path)
         if parsed.path == '/api/research':
@@ -35,7 +39,9 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     args={k:v[0] for k,v in parse_qs(parsed.query).items()}
                     if set(args)-{'hour','sex','age','unit'}: raise ValueError('Unsupported filter')
-                    body=cached_dashboard(str(self.database),self.database.stat().st_mtime_ns,tuple(sorted(args.items())))
+                    stat = self.database.stat()
+                    file_version = (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+                    body=cached_dashboard(str(self.database),file_version,tuple(sorted(args.items())),self.binding)
                 self.send_content(body,'application/json; charset=utf-8')
             except ValueError as e: self.send_content(json.dumps({'error':str(e)}).encode(),'application/json',400)
             except Exception:
@@ -93,12 +99,16 @@ def main():
                 research=synthetic_research(db)
             else:
                 research=None
+            binding = None
             if args.research_dir is not None:
                 if args.mode!='mimic': p.error('研究结果仅能加载到本地真实模式')
                 research=json.loads((args.research_dir/'research_summary.json').read_text(encoding='utf-8'))
-                if research.get('mode')!='mimic' or research.get('cohort_sha256')!=source.get('cohort_sha256'):
-                    p.error('分析产物与当前数据库的队列指纹不一致')
+                try:
+                    binding = research_binding(source, research)
+                except ValueError as error:
+                    p.error(str(error))
         Handler.research=json.dumps(research,ensure_ascii=False,allow_nan=False).encode('utf-8') if research else None
+        Handler.binding = binding
         Handler.database=database
         port=args.port or (8765 if args.mode=='demo' else 8766)
         try: server=ThreadingHTTPServer(('127.0.0.1',port),Handler)

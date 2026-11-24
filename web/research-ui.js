@@ -14,17 +14,15 @@ function studyCards() {
 }
 
 function workflow() {
-    return '<ol class="research-flow">' + [
-        '临床问题', '研究设计', '数据提取', '清洗与治理', '组建队列', '统计分析',
-        '预测建模', '模型评价', '结果解释', '可视化', '研究报告',
-    ].map(name => `<li>${name}</li>`).join('') + '</ol>';
+    return '<div class="entity-map"><span>队列与结局定义</span><b>→</b><span>各时点风险集</span><b>→</b><span>患者级折外评价</span></div>' +
+        '<div class="entity-map"><span>冻结 Development</span><b>→</b><span>每人首个合格 ICU 停留</span><b>→</b><span>基线与探索性关联</span></div>';
 }
 
 function studyOverview() {
     return '<div class="study-hero"><p>个人研究与工程实践 · ICU 回顾性预测研究</p>' +
-        '<h2>ICU 入科后，如何用当时已知的信息预测 90 天死亡风险？</h2>' +
-        '<p>临床研究界定对象与结局，医学数据提供可追溯变量，医学 AI 在患者级验证中评价预测表现。</p></div>' +
-        panel('临床研究工作流','从问题、方案和数据到可审阅的结果',workflow()) +
+        '<h2>ICU 入科后，已报告的信息能否预测 90 天内有记录的死亡？</h2>' +
+        '<p>v03 比较 Logistic 与 LSTM 的排序表现。v04 关注首小时同一网络校准前后的概率误差。</p></div>' +
+        panel('研究分析流程','预测评价与基线描述使用各自的分析人群',workflow()) +
         panel('PICOTS 研究框架','预测模型比较采用同一时点及人群',studyCards()) +
         panel('数据到演示','真实研究在授权环境运行，公开看板计算独立模拟汇总',
               '<div class="entity-map"><span>冻结研究数据与已有产物</span><b>→</b><span>Python ETL 与 SQL</span><b>→</b><span>本地看板与报告</span></div>' +

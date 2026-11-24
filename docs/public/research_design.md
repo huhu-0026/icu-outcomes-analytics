@@ -1,30 +1,53 @@
 # 研究设计与 PICOTS
 
-ICU 入科早期数据会持续到达。我们研究已报告临床信息能否帮助估计从入 ICU 日算起的 90 天死亡风险，以及概率在早期时点的误差。研究目的是问清谁可被预测、当时可用什么、预测表现如何。
+ICU 入科早期数据会持续到达。对每个仍符合条件的 ICU 停留，本项目用预测时已报告的信息，估计从入科日计的 90 天内有记录的死亡风险。四个预测时点共用入科日起算的结局定义，各自使用对应的风险集。
 
 | PICOTS | 本地研究定义 |
 |---|---|
 | Population | MIMIC-IV 3.1 ICU 的冻结 Development。来源 SQL 要求入出科有效、估计年龄 >16、停留 >1 小时 |
 | Index model | 使用可得的历史序列预测概率的单向 LSTM |
 | Comparator | 同一时点的 Logistic 快照。另设同一网络原概率与 Isotonic 概率对比 |
-| Outcome | 死亡日期落在入 ICU 日至该日加 90 天的闭区间。DOD 缺失按历史定义为标签 0 |
+| Outcome | 死亡日期落在入 ICU 日至该日加 90 天的闭区间。标签 0 表示窗口内无已记录死亡，包含 DOD 缺失 |
 | Timing | 入 ICU 为研究起点。预测时点为 1、24、48、72 小时 |
 | Setting | 单中心回顾性 EHR、患者级内部交叉验证 |
 
-探索性假设包括 LSTM 折外排序在 24 小时表现出差异，首小时概率校准可以降低 Brier。v04 的首小时来自已见的 v03 早期校准问题。本文件追溯记录研究设计，独立预注册证据未确立。
+v03 主要比较 24 小时的折外排序。观察到早期概率校准问题后，v04 将首小时 Brier 设为同网络校准比较的重点。这些是回顾性项目中的探索性比较。本文档追溯记录其设计。
+
+## 队列纳排与患者分区
 
 ```mermaid
-flowchart TD
-  A["源 ICU 停留"] --> B["有效入出科、年龄、停留时长"]
-  B --> C["按患者固定哈希分区"]
-  C --> D["Development · 五折循环"]
-  C --> E["历史内部 Test · 已在既往查看"]
-  D --> F["完整小时、预测早于出科与死亡边界"]
-  F --> G["1 / 24 / 48 / 72 小时风险集"]
+%%{init: {"htmlLabels": false, "flowchart": {"htmlLabels": false}}}%%
+flowchart TB
+  accTitle: ICU 队列纳排与患者分区
+  accDescr: 对 ICU 停留应用时间、年龄和时长要求，按患者固定哈希分入 Development 或历史 Test。
+  source["源 ICU 停留"] --> time_check{"入出科时间有效"}
+  time_check -->|否| invalid_time["排除时间无效"]
+  time_check -->|是| age_check{"估计年龄大于 16 岁"}
+  age_check -->|否| invalid_age["排除未满足年龄要求"]
+  age_check -->|是| los_check{"停留长于 1 小时"}
+  los_check -->|否| short_stay["排除过短停留"]
+  los_check -->|是| split["按患者固定哈希分区"]
+  split --> development["冻结 Development"]
+  split --> test["历史内部 Test<br/>既往已查看"]
 ```
 
-该图展示队列规则。已在授权环境核验全源 ICU 纳排、冻结 Development 的时点成员及已记录死亡的日期边界。逐层计数和敏感性结果保留在本地报告。公开图中的计数来自独立模拟库。
+同一患者的多次停留进入同一分区。当前分析使用冻结 Development。历史 Test 已在既往研究中查看。纳排和风险集逐层计数保留在授权本地报告，公开演示的队列规模来自独立模拟库。
 
-**研究时间轴** 入科 → 已测量且已报告的事件 → 到达预测时点 → 按入科日追溯结局窗口。每个时点使用仍满足历史出科和死亡边界的停留。仅有死亡日期时，旧规则从该日零点排除。该保守约定及随访可观察性应在后续新协议中明确。
+## Development 的分析分支
 
-[统计分析计划](statistical_analysis_plan.md) · [变量字典](data_dictionary.md)
+```mermaid
+%%{init: {"htmlLabels": false, "flowchart": {"htmlLabels": false}}}%%
+flowchart TB
+  accTitle: Development 分析人群与时点风险集
+  accDescr: 基线统计使用每人首个合格停留，预测评价保留每个时点仍符合条件的停留。
+  development["冻结 Development"] --> index_stay["每位患者首个合格停留"]
+  index_stay --> descriptive["Table 1 与探索性关联"]
+  development --> eligible_hour["达到完整预测小时"]
+  eligible_hour --> event_boundary["预测早于出科和死亡边界"]
+  event_boundary --> risk_sets["1、24、48、72 小时<br/>分别形成风险集"]
+  risk_sets --> model_eval["按患者分折的折外评价"]
+```
+
+每个时点只使用在预测前测量、且在预测时已报告的事件。时点成员要达到对应完整小时，并且预测时刻早于出科和死亡边界。历史规则将仅记录死亡日期者的排除边界设在该日零点。结局窗口以入科日为起点，不随预测时点后移。随访可观察性限制标签 0 的解释。
+
+[实验流程](model_development.md) · [统计分析计划](statistical_analysis_plan.md) · [变量字典](data_dictionary.md)

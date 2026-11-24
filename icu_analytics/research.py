@@ -1,20 +1,15 @@
 """Authorized local summaries from frozen Development artifacts."""
-import hashlib
 import csv
 import json
 from pathlib import Path
 
 from .statistics import baseline, evaluate_scores
+from .research_inputs import (
+    CALIBRATION, COHORT, FEATURES, HOURS, RAW, TABLES,
+    digest, fingerprint_inputs, validate_oof,
+)
 
-HOURS = (1, 24, 48, 72)
 PHASE2 = '11_项目治理与方法审查/phase2_20261118'
-FEATURES = '03_队列与特征工程/analysis'
-CALIBRATION = '05_独立患者校准/analysis'
-
-
-def digest(path):
-    with path.open('rb') as stream:
-        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def adjusted_age_sex(frame):
@@ -42,20 +37,21 @@ def collect(project):
     import pandas as pd
 
     project = Path(project).resolve()
+    shared = fingerprint_inputs(project)
     audited = json.loads((project/PHASE2/'artifact_registry.json').read_text(encoding='utf-8'))['artifacts']
     fingerprints = {row['path']: row['sha256'] for row in audited}
     used = {}
 
     def verified(relative):
         source = project / relative
-        observed = digest(source)
+        observed = shared.get(relative) or digest(source)
         if fingerprints.get(relative) != observed:
             raise ValueError(f'Frozen artifact fingerprint mismatch: {relative}')
         used[relative] = observed
         return source
 
-    cohort = pd.read_parquet(verified(f'{FEATURES}/private/cohort.parquet'))
-    raw_root = project/'02_原始数据/mimic-iv-3.1'
+    cohort = pd.read_parquet(verified(COHORT))
+    raw_root = project / RAW
     patients = pd.read_csv(raw_root/'hosp/patients.csv.gz', usecols=['subject_id', 'gender'])
     units = pd.read_csv(raw_root/'icu/icustays.csv.gz', usecols=['stay_id', 'first_careunit'])
     index = cohort.sort_values(['intime','stay_id']).drop_duplicates('subject_id')
@@ -84,23 +80,14 @@ def collect(project):
         (CALIBRATION, 'nested_raw_oof.npz', 'v04_nested', 'nested_raw', 'M4-CAL-V04-20261112'),
         (CALIBRATION, 'calibrated_oof.npz', 'v04_nested', 'isotonic', 'M4-CAL-V04-20261112'),
     ]
-    tab = project/'07_最终报告与英文图表/03_tables'
+    tab = project / TABLES
     for directory, filename, experiment, model, experiment_id in models:
         frozen = pd.read_csv(tab/('baseline_performance.csv' if experiment == 'v03_baseline'
                                   else 'calibrated_performance.csv'))
         with np.load(verified(f'{directory}/private/{filename}'), allow_pickle=False) as saved:
-            if len(saved['stay_id']) != len(anchor) or len(np.unique(saved['stay_id'])) != len(anchor):
-                raise ValueError('OOF stay coverage mismatch')
-            linked = anchor.loc[saved['stay_id']]
-            for key, column in [('label','target'),('subject_id','subject_id'),('fold','fold')]:
-                if not np.array_equal(saved[key], linked[column]):
-                    raise ValueError(f'OOF {key} mismatch for {model}')
-            if not np.array_equal(saved['hours'], HOURS):
-                raise ValueError('OOF landmark order mismatch')
+            mask = validate_oof(saved, anchor, model)
             for j, hour in enumerate(HOURS):
-                valid = saved['mask'][:, j].astype(bool)
-                if not np.array_equal(valid, linked.hours.ge(hour)):
-                    raise ValueError('OOF risk-set mismatch')
+                valid = mask[:, j]
                 result = evaluate_scores(saved['label'][valid].astype(int).tolist(),
                                          saved['predictions'][valid,j].tolist())
                 ref = frozen[(frozen.model == model) & (frozen.hour == hour)].iloc[0]
@@ -119,10 +106,10 @@ def collect(project):
     for row in risk:
         if row['saved_risk'] != int(cohort.hours.ge(row['hour']).sum()):
             raise ValueError('Risk audit and cohort disagree')
-    return {
+    result = {
         'mode':'mimic', 'classification':'RESTRICTED_LOCAL', 'dataset':'Development',
         'analysis_id':'M4-PORTFOLIO-DESCRIPTIVE-20261119',
-        'cohort_sha256':used[f'{FEATURES}/private/cohort.parquet'],
+        'cohort_sha256':shared[COHORT], 'research_input_sha256':shared,
         'provenance':used, 'table1':table1,'performance':performance, 'risk_audit':risk,
         'association':association,'association_age_lt_90':sensitivity,'subgroup':subgroup,
         'calibration':pd.read_csv(tab/'calibration_bins.csv').to_dict('records'),
@@ -130,6 +117,9 @@ def collect(project):
             [['hour','feature','risk_stays','known','missing_fraction']].to_dict('records'),
         'population':{'patients':len(frame),'admissions':int(cohort.hadm_id.nunique()),'stays':len(cohort)},
     }
+    if fingerprint_inputs(project) != shared:
+        raise ValueError('Shared research inputs changed during review')
+    return result
 
 
 def write_review(project, output):
