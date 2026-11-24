@@ -16,7 +16,7 @@ PUBLIC_FILES = (
     'docs/public/project_overview.md', 'docs/public/research_design.md',
     'docs/public/statistical_analysis_plan.md', 'docs/public/data_dictionary.md',
     'docs/public/model_development.md', 'docs/public/model_evaluation.md',
-    'docs/public/visualization_guide.md', 'docs/public/02_指标字典与模型.md',
+    'docs/public/visualization_guide.md',
     'docs/public/dashboard-overview.png', 'docs/public/patient-analysis.png',
     'docs/public/clinical-analysis.png', 'docs/public/data-quality.png',
     'docs/public/mobile-overview.png', 'docs/public/model-evaluation.png',

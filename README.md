@@ -8,7 +8,7 @@
 
 **English abstract.** A personal clinical research and engineering project on ICU landmark prediction using MIMIC-IV 3.1. This repository contains a synthetic interactive demo and tools for checking frozen results in a credentialed environment. Historical cohort construction, feature generation and model training are documented in a separate local project.
 
-[在线演示（模拟数据）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [项目概览](docs/public/project_overview.md) · [队列与时间轴](docs/public/research_design.md) · [实验流程](docs/public/model_development.md) · [统计分析计划](docs/public/statistical_analysis_plan.md)
+[在线演示（模拟数据）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [项目概览](docs/public/project_overview.md) · [队列与时间轴](docs/public/research_design.md) · [数据字典](docs/public/data_dictionary.md) · [实验流程](docs/public/model_development.md) · [统计分析计划](docs/public/statistical_analysis_plan.md)
 
 ![新版研究总览 · 独立模拟 SYNTHETIC](docs/public/dashboard-overview.png)
 
