@@ -10,11 +10,11 @@
 - **检查概率校准**：重点看入科后 1 小时。在相同的验证人群中，用 Brier 分数衡量同一个 LSTM 校准前后的概率误差。
 - **解释模型输出**：把历史特征按临床概念分组，查看各组对预测输出的贡献大小。
 
-队列和基线分析说明每项结果对应哪些患者和 ICU 停留。实现路径及实验编号见 [实验流程](docs/public/model_development.md)。
+队列和基线分析说明每项结果对应哪些患者和 ICU 停留。具体做法见 [模型比较、校准与解释](docs/public/model_development.md)。
 
 **English abstract.** A personal clinical research and engineering project on ICU landmark prediction using MIMIC-IV 3.1. This repository contains a synthetic interactive demo and tools for checking frozen results in a credentialed environment. Historical cohort construction, feature generation and model training are documented in a separate local project.
 
-[在线演示（模拟数据）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [项目概览](docs/public/project_overview.md) · [队列与时间轴](docs/public/research_design.md) · [数据字典](docs/public/data_dictionary.md) · [实验流程](docs/public/model_development.md) · [统计分析计划](docs/public/statistical_analysis_plan.md)
+[在线演示（模拟数据）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [项目概览](docs/public/project_overview.md) · [队列与时间轴](docs/public/research_design.md) · [数据字典](docs/public/data_dictionary.md) · [模型方法](docs/public/model_development.md) · [统计分析计划](docs/public/statistical_analysis_plan.md)
 
 [![研究总览预览 · 独立模拟数据](docs/public/dashboard-overview.png)](https://huhu-0026.github.io/icu-outcomes-analytics/)
 
