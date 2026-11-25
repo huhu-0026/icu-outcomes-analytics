@@ -4,13 +4,19 @@
 
 这是我在学习临床研究和医学 AI 过程中完成的个人项目。我用 MIMIC-IV 3.1 练习把一个临床问题转成可核查的分析，并实现了数据整理、结果复算和交互展示。
 
-研究问题是：在 ICU 入科后 1、24、48、72 小时，对当时仍符合条件的停留，使用当时已报告的信息，能否估计从入科日计的 90 天内有记录的死亡风险？v03 关注 Logistic 和 LSTM 的区分能力，主要比较时点为 24 小时。v04 延续早期概率误差的观察，重点比较首小时同一网络校准前后的 Brier。队列描述帮助理解分母，v06 的分组贡献用于理解模型输出。
+**研究问题**是在 ICU 入科后 1、24、48、72 小时，能否用当时已报告的信息，估计从入科日起 90 天内有记录的死亡风险？每次评价只纳入该时点仍符合条件的 ICU 停留。
+
+- **比较模型**：重点看入科后 24 小时。比较逻辑回归的时点快照和 LSTM 的历史序列，观察两者区分高低风险的能力。
+- **检查概率校准**：重点看入科后 1 小时。在相同的验证人群中，用 Brier 分数衡量同一个 LSTM 校准前后的概率误差。
+- **解释模型输出**：把历史特征按临床概念分组，查看各组对预测输出的贡献大小。
+
+队列和基线分析说明每项结果对应哪些患者和 ICU 停留。实现路径及实验编号见 [实验流程](docs/public/model_development.md)。
 
 **English abstract.** A personal clinical research and engineering project on ICU landmark prediction using MIMIC-IV 3.1. This repository contains a synthetic interactive demo and tools for checking frozen results in a credentialed environment. Historical cohort construction, feature generation and model training are documented in a separate local project.
 
 [在线演示（模拟数据）](https://huhu-0026.github.io/icu-outcomes-analytics/) · [项目概览](docs/public/project_overview.md) · [队列与时间轴](docs/public/research_design.md) · [数据字典](docs/public/data_dictionary.md) · [实验流程](docs/public/model_development.md) · [统计分析计划](docs/public/statistical_analysis_plan.md)
 
-![新版研究总览 · 独立模拟 SYNTHETIC](docs/public/dashboard-overview.png)
+[![研究总览预览 · 独立模拟数据](docs/public/dashboard-overview.png)](https://huhu-0026.github.io/icu-outcomes-analytics/)
 
 | 证据范围 | 可查看或运行的内容 |
 |---|---|

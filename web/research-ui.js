@@ -1,27 +1,35 @@
 'use strict';
 
+function overviewCards(cards) {
+    return '<div class="picots">' + cards.map(([name, detail]) =>
+        `<div><strong>${name}</strong><p>${detail}</p></div>`).join('') + '</div>';
+}
+
 function studyCards() {
-    const cards = [
+    return overviewCards([
         ['P · Population', '符合条件的 MIMIC-IV 3.1 ICU Development 队列'],
         ['I · Index model', '利用已报告的临床轨迹生成动态风险概率'],
         ['C · Comparator', '同一时点的 Logistic 基准'],
         ['O · Outcome', '自入 ICU 日起 90 天死亡标签'],
         ['T · Timing', '入科后 1、24、48、72 小时'],
         ['S · Setting', '单中心回顾性队列，患者级内部验证'],
-    ];
-    return '<div class="picots">' + cards.map(([name, detail]) =>
-        `<div><strong>${name}</strong><p>${detail}</p></div>`).join('') + '</div>';
+    ]);
 }
 
 function workflow() {
-    return '<div class="entity-map"><span>队列与结局定义</span><b>→</b><span>各时点风险集</span><b>→</b><span>患者级折外评价</span></div>' +
-        '<div class="entity-map"><span>冻结 Development</span><b>→</b><span>每人首个合格 ICU 停留</span><b>→</b><span>基线与探索性关联</span></div>';
+    return '<div class="entity-map"><span>定义队列与结局</span><b>→</b><span>确定各时点可评价的停留</span><b>→</b><span>按患者分组验证</span></div>' +
+        '<div class="entity-map"><span>研究队列</span><b>→</b><span>每人首个合格 ICU 停留</span><b>→</b><span>描述基线特征</span></div>';
 }
 
 function studyOverview() {
-    return '<div class="study-hero"><p>个人研究与工程实践 · ICU 回顾性预测研究</p>' +
-        '<h2>ICU 入科后，已报告的信息能否预测 90 天内有记录的死亡？</h2>' +
-        '<p>v03 比较 Logistic 与 LSTM 的排序表现。v04 关注首小时同一网络校准前后的概率误差。</p></div>' +
+    return '<div class="study-hero"><p>个人临床研究与医学 AI 实践</p>' +
+        '<h2>ICU 入科后的死亡风险预测</h2>' +
+        '<p>在入科后 1、24、48、72 小时，用当时已报告的信息，估计从入科日起 90 天内有记录的死亡风险。</p></div>' +
+        panel('三个研究问题','',overviewCards([
+            ['比较模型', '重点看入科后 24 小时。比较逻辑回归的时点快照与 LSTM 的历史序列，观察两者区分高低风险的能力。'],
+            ['检查概率校准', '重点看入科后 1 小时。用 Brier 分数比较同一个 LSTM 校准前后的概率误差。'],
+            ['解释模型输出', '把历史特征按临床概念分组，查看各组对预测输出的贡献大小。'],
+        ])) +
         panel('研究分析流程','预测评价与基线描述使用各自的分析人群',workflow()) +
         panel('PICOTS 研究框架','预测模型比较采用同一时点及人群',studyCards()) +
         panel('数据到演示','真实研究在授权环境运行，公开看板计算独立模拟汇总',
@@ -96,6 +104,11 @@ function studyStatistics() {
 }
 
 const modelNames={logistic:'Logistic',lstm:'LSTM',nested_raw:'LSTM 原概率',isotonic:'同网络 Isotonic'};
+const experimentTitles = {
+    synthetic_simulation: '模拟评分对照',
+    v03_baseline: '模型比较 · 逻辑回归与 LSTM',
+    v04_nested: '概率校准 · 同一 LSTM 校准前后',
+};
 const palette=['#1b766b','#b35037'];
 function nameFor(row) {
     return data.meta.mode==='demo' ? (row.model==='nested_raw'?'模拟评分 A':'模拟评分 B') :
@@ -143,7 +156,7 @@ function modelStudy() {
             xyChart(['nested_raw','isotonic'].map(model=>({name:nameFor({model}),
                 points:bins.filter(r=>r.model===model).map(r=>[r.mean_probability,r.observed_fraction])})),
             '平均预测概率','观察事件率',[[0,0],[1,1]])):'';
-        return panel(esc(experiment)+' · '+hour+' h','全队列固定评价 · AP 按阶梯积分 · 分类阈值 0.50',
+        return panel(esc(experimentTitles[experiment] ?? experiment)+' · 入科后 '+hour+' 小时','全队列固定评价 · AP 按阶梯积分 · 分类阈值 0.50',
                 table(['模型','停留数','AUROC','AP','Brier','MCC','TN / FP / FN / TP'],tableRows))+
                 charts+trend+calibrationPlot;
     }).join('');
@@ -151,7 +164,7 @@ function modelStudy() {
 
 function studyExplanation() {
     const synthetic=data.meta.mode==='demo';
-    return panel(synthetic?'模拟贡献展示（示意）':'v06 · 13 组历史贡献',
+    return panel(synthetic?'模拟贡献展示（示意）':'13 组历史特征贡献',
         hour+' h · 平均绝对贡献（概率百分点）',
         bars(data.importance.map(r=>({label:r.group_label,n:r.importance_pp})),true)+
         `<p class="chart-note">${synthetic?'示意贡献用于检查看板。':'在折外患者的样本中计算分组历史 Shapley，参照来自相应网络训练患者。贡献大小受参照与变量相关性影响。'}</p>`);
