@@ -74,4 +74,4 @@
 
 `metadata` 按键保存分析库模式、来源和构建信息。 `bi_cohort` 按记录性别、索引年龄组和停留科室预聚合。同一患者可能进入多个科室组，各组患者数不能直接相加为总人数。
 
-数据来源、字段生成和分析实现分别见 [研究设计](research_design.md)、[模型开发](model_development.md)、[统计分析计划](statistical_analysis_plan.md)、[模型评价](model_evaluation.md) 和 [SQLite 汇总代码](../../icu_analytics/analytics.py)。模型特征规则对照授权本地研究项目第 03 章的冻结方案和特征构建代码。
+数据来源、字段生成和分析实现分别见 [研究设计](research_design.md)、[模型开发](model_development.md)、[统计分析计划](statistical_analysis_plan.md)、[模型评价](model_evaluation.md) 和 [SQLite 汇总代码](../../icu_analytics/analytics.py)。模型特征规则对照本地完整研究项目的 `03_队列与特征工程/analysis` 中的冻结方案与代码。该归档与公开仓库的对应关系见 [本地归档的位置](model_development.md#本地归档的位置)。
